@@ -8,7 +8,13 @@ This is a very early prototype of a FUSE driver for Azure Blob Storage. It uses 
 
 ## How to build
 
-The easiest way is to use the Docker image which has all the necessary pre-requisites. Just run `docker build  .` in the `build` directory to create the Docker image. Then use the `build_docker.cmd` to start the container (don't forget to change the arguments to `-v` to point to your local source directory). Once inside the container:
+The easiest way is to use the Docker image which has all the necessary pre-requisites. Just run:
+
+```
+docker build -t azurefuse:build  .
+```
+
+in the `build` directory to create the Docker image. Then use the `build_docker.sh` to start the container (don't forget to check the arguments to `-v` to point to your local source directory). Once inside the container:
 
 ```
 cd /azure-fuse && make
