@@ -4,6 +4,6 @@
 
 export LD_LIBRARY_PATH=/usr/local/lib
 
-mkdir -p /azure
+mkdir -p $2
 
 ./bin/azurefs $1 $2 -f -s
