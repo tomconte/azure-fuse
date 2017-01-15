@@ -230,30 +230,22 @@ int ExampleFS::Fsync(const char *path, int datasync, struct fuse_file_info *fi) 
 int ExampleFS::Setxattr(const char *path, const char *name, const char *value, size_t size, int flags) {
   printf("setxattr(path=%s, name=%s, value=%s, size=%d, flags=%d\n",
 	 path, name, value, (int)size, flags);
-  char fullPath[PATH_MAX];
-  AbsPath(fullPath, path);
-  return RETURN_ERRNO(lsetxattr(fullPath, name, value, size, flags));
+  return -ENOTSUP;
 }
 
 int ExampleFS::Getxattr(const char *path, const char *name, char *value, size_t size) {
   printf("getxattr(path=%s, name=%s, size=%d\n", path, name, (int)size);
-  char fullPath[PATH_MAX];
-  AbsPath(fullPath, path);
-  return RETURN_ERRNO(getxattr(fullPath, name, value, size));
+  return -ENOTSUP;
 }
 
 int ExampleFS::Listxattr(const char *path, char *list, size_t size) {
   printf("listxattr(path=%s, size=%d)\n", path, (int)size);
-  char fullPath[PATH_MAX];
-  AbsPath(fullPath, path);
-  return RETURN_ERRNO(llistxattr(fullPath, list, size));
+  return -ENOTSUP;
 }
 
 int ExampleFS::Removexattr(const char *path, const char *name) {
   printf("removexattry(path=%s, name=%s)\n", path, name);
-  char fullPath[PATH_MAX];
-  AbsPath(fullPath, path);
-  return RETURN_ERRNO(lremovexattr(fullPath, name));
+  return -ENOTSUP;
 }
 
 int ExampleFS::Opendir(const char *path, struct fuse_file_info *fileInfo) {
