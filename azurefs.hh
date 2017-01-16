@@ -19,21 +19,21 @@
 #include "was/blob.h"
 #include "cpprest/rawptrstream.h"
 
-class ExampleFS {
+class AzureFS {
 private: 
   const char *_connectionString;
   azure::storage::cloud_storage_account _storage_account;
   azure::storage::cloud_blob_client _blob_client;
   
-  static ExampleFS *_instance;
+  static AzureFS *_instance;
 
   void AbsPath(char dest[PATH_MAX], const char *path);
 
 public:
-  static ExampleFS *Instance();
+  static AzureFS *Instance();
 
-  ExampleFS();
-  ~ExampleFS();
+  AzureFS();
+  ~AzureFS();
 
   void setAzureOptions(const char *connectionString);
 
