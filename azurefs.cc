@@ -40,6 +40,10 @@ int AzureFS::Getattr(const char *path, struct stat *statbuf) {
     statbuf->st_nlink = 2;
   } else if (strrchr(path, '/') == path) {
     // Only one slash at the beginning: this is a container (root-level directory)
+    azure::storage::cloud_blob_container container = _blob_client.get_container_reference(path+1);
+    if (container.exists() == false) {
+      return -ENOENT;
+    }
     statbuf->st_mode = S_IFDIR | 0755;
     statbuf->st_nlink = 2;
   } else {
@@ -84,9 +88,19 @@ int AzureFS::Mknod(const char *path, mode_t mode, dev_t dev) {
 
 int AzureFS::Mkdir(const char *path, mode_t mode) {
   printf("**mkdir(path=%s, mode=%d)\n", path, (int)mode);
-  char fullPath[PATH_MAX];
-  AbsPath(fullPath, path);
-  return RETURN_ERRNO(mkdir(fullPath, mode));
+  if (strrchr(path, '/') == path) {
+    // Only deal with containers in root directory for now
+    azure::storage::cloud_blob_container container = _blob_client.get_container_reference(path+1);
+    if (container.exists() == true) {
+      return -EEXIST;
+    }
+    if (container.create_if_not_exists() == false) {
+      return -EACCES;
+    }
+  } else {
+    return -EACCES;
+  }
+  return 0;
 }
 
 int AzureFS::Unlink(const char *path) {
