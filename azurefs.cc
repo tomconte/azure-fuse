@@ -111,10 +111,19 @@ int AzureFS::Unlink(const char *path) {
 }
 
 int AzureFS::Rmdir(const char *path) {
-  printf("rmkdir(path=%s\n)", path);
-  char fullPath[PATH_MAX];
-  AbsPath(fullPath, path);
-  return RETURN_ERRNO(rmdir(fullPath));
+  printf("rmdir(path=%s)\n", path);
+  if (strrchr(path, '/') == path) {
+    // Only deal with containers in root directory for now
+    azure::storage::cloud_blob_container container = _blob_client.get_container_reference(path+1);
+    if (container.exists() == false) {
+      return -ENOENT;
+    }
+    // TODO: check the container is empty
+    container.delete_container();
+  } else {
+    return -EACCES;
+  }
+  return 0;
 }
 
 int AzureFS::Symlink(const char *path, const char *link) {
@@ -307,5 +316,3 @@ int AzureFS::Truncate(const char *path, off_t offset, struct fuse_file_info *fil
   AbsPath(fullPath, path);
   return RETURN_ERRNO(ftruncate(fileInfo->fh, offset));
 }
-
-
