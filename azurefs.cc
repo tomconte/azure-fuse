@@ -60,7 +60,15 @@ int AzureFS::Getattr(const char *path, struct stat *statbuf) {
     printf("check container=%s blob=%s\n", containerName, blobName);
 
     azure::storage::cloud_blob_container container = _blob_client.get_container_reference(containerName);
+    if (container.exists() == false) {
+      return -ENOENT;
+    }
+
     azure::storage::cloud_blob blob = container.get_blob_reference(blobName);
+    if (blob.exists() == false) {
+      return -ENOENT;
+    }
+
     blob.download_attributes();
     
     statbuf->st_mode = S_IFREG | 0755;
