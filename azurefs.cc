@@ -244,7 +244,35 @@ int AzureFS::Read(const char *path, char *buf, size_t size, off_t offset, struct
 
 int AzureFS::Write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fileInfo) {
   printf("write(path=%s, size=%d, offset=%d)\n", path, (int)size, (int)offset);
-  return RETURN_ERRNO(pwrite(fileInfo->fh, buf, size, offset));
+  // TODO: handle offset
+  char containerName[64], blobName[1024];
+  const char *slash = strchr(path+1, '/');
+  int slashPos = slash-path-1;
+
+  strcpy(blobName, slash);
+  strncpy(containerName, path+1, slashPos);
+  containerName[slashPos] = '\0';
+
+  azure::storage::cloud_blob_container container = _blob_client.get_container_reference(containerName);
+  if (container.exists() == false) {
+    return -ENOENT;
+  }
+
+  azure::storage::cloud_append_blob blob = container.get_append_blob_reference(blobName);
+  if (blob.exists() == false) {
+    return -ENOENT;
+  }
+
+  concurrency::streams::rawptr_buffer<unsigned char> buffer((unsigned char *)buf, size, std::ios::in);
+  concurrency::streams::istream stream = buffer.create_istream();
+
+  blob.append_from_stream(stream); // TODO: is this the most efficient way to upload?
+
+  stream.close().wait();
+  buffer.close().wait();
+
+  // TODO: make sure to report bytes actually sent
+  return size;
 }
 
 int AzureFS::Statfs(const char *path, struct statvfs *statInfo) {
