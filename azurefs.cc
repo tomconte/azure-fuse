@@ -101,12 +101,12 @@ int AzureFS::Mknod(const char *path, mode_t mode, dev_t dev) {
     return -ENOENT;
   }
 
-  azure::storage::cloud_block_blob blob = container.get_blob_reference(blobName);
+  azure::storage::cloud_append_blob blob = container.get_append_blob_reference(blobName);
   if (blob.exists() == true) {
     return -EEXIST;
   }
 
-  blob.upload_text(""); // TODO: is this the best way to create an empty blob?
+  blob.create_or_replace();
 
   return 0;
 }
