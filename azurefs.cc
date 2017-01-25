@@ -87,11 +87,8 @@ int AzureFS::Readlink(const char *path, char *link, size_t size) {
 
 int AzureFS::Mknod(const char *path, mode_t mode, dev_t dev) {
   printf("mknod(path=%s, mode=%d)\n", path, mode);
-  char fullPath[PATH_MAX];
-  AbsPath(fullPath, path);
-	
-  //handles creating FIFOs, regular files, etc...
-  return RETURN_ERRNO(mknod(fullPath, mode, dev));
+  // TODO: handle all cases (file, device special file or named pipe) 
+  return 0;
 }
 
 int AzureFS::Mkdir(const char *path, mode_t mode) {
