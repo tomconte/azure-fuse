@@ -88,6 +88,26 @@ int AzureFS::Readlink(const char *path, char *link, size_t size) {
 int AzureFS::Mknod(const char *path, mode_t mode, dev_t dev) {
   printf("mknod(path=%s, mode=%d)\n", path, mode);
   // TODO: handle all cases (file, device special file or named pipe) 
+  char containerName[64], blobName[1024];
+  const char *slash = strchr(path+1, '/');
+  int slashPos = slash-path-1;
+
+  strcpy(blobName, slash);
+  strncpy(containerName, path+1, slashPos);
+  containerName[slashPos] = '\0';
+
+  azure::storage::cloud_blob_container container = _blob_client.get_container_reference(containerName);
+  if (container.exists() == false) {
+    return -ENOENT;
+  }
+
+  azure::storage::cloud_block_blob blob = container.get_blob_reference(blobName);
+  if (blob.exists() == true) {
+    return -EEXIST;
+  }
+
+  blob.upload_text(""); // TODO: is this the best way to create an empty blob?
+
   return 0;
 }
 
