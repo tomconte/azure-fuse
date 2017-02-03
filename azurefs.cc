@@ -40,9 +40,14 @@ int AzureFS::Getattr(const char *path, struct stat *statbuf) {
     statbuf->st_nlink = 2;
   } else if (strrchr(path, '/') == path) {
     // Only one slash at the beginning: this is a container (root-level directory)
-    azure::storage::cloud_blob_container container = _blob_client.get_container_reference(path+1);
-    if (container.exists() == false) {
-      return -ENOENT;
+    azure::storage::cloud_blob_container container;
+    container = _blob_client.get_container_reference(path+1);
+    try {
+      if (container.exists() == false) {
+        return -ENOENT;
+      }
+    } catch (...) {
+      return -EPERM;
     }
     statbuf->st_mode = S_IFDIR | 0755;
     statbuf->st_nlink = 2;
