@@ -19,6 +19,13 @@ AzureFS::~AzureFS() {
 
 }
 
+std::vector<azure::storage::block_list_item> blocks; // TODO: hack to be removed (use fh)
+
+utility::string_t AzureFS::get_block_id(uint16_t block_index)
+{
+    return utility::conversions::to_base64(block_index);
+}
+
 void AzureFS::AbsPath(char dest[PATH_MAX], const char *path) {
   strncpy(dest, path, PATH_MAX);
   //printf("translated path: %s to %s\n", path, dest);
@@ -106,12 +113,12 @@ int AzureFS::Mknod(const char *path, mode_t mode, dev_t dev) {
     return -ENOENT;
   }
 
-  azure::storage::cloud_append_blob blob = container.get_append_blob_reference(blobName);
+  azure::storage::cloud_block_blob blob = container.get_block_blob_reference(blobName);
   if (blob.exists() == true) {
     return -EEXIST;
   }
 
-  blob.create_or_replace();
+  blob.upload_text(utility::string_t()); // TODO: any better way? The blob needs to appear in listings.
 
   return 0;
 }
@@ -263,7 +270,7 @@ int AzureFS::Write(const char *path, const char *buf, size_t size, off_t offset,
     return -ENOENT;
   }
 
-  azure::storage::cloud_append_blob blob = container.get_append_blob_reference(blobName);
+  azure::storage::cloud_block_blob blob = container.get_block_blob_reference(blobName);
   if (blob.exists() == false) {
     return -ENOENT;
   }
@@ -271,7 +278,13 @@ int AzureFS::Write(const char *path, const char *buf, size_t size, off_t offset,
   concurrency::streams::rawptr_buffer<unsigned char> buffer((unsigned char *)buf, size, std::ios::in);
   concurrency::streams::istream stream = buffer.create_istream();
 
-  blob.append_from_stream(stream); // TODO: is this the most efficient way to upload?
+  uint16_t index = offset / 4096; // TODO: this is probably bad
+  auto block_id = get_block_id(index);
+  azure::storage::blob_request_options options;
+  options.set_use_transactional_md5(true);
+  blob.upload_block(block_id, stream, utility::string_t(), \
+    azure::storage::access_condition(), options, azure::storage::operation_context()); // TODO: is this the most efficient way to upload?
+  blocks.push_back(azure::storage::block_list_item(block_id)); // TODO: use fh to store the list of blocks
 
   stream.close().wait();
   buffer.close().wait();
@@ -294,6 +307,28 @@ int AzureFS::Flush(const char *path, struct fuse_file_info *fileInfo) {
 
 int AzureFS::Release(const char *path, struct fuse_file_info *fileInfo) {
   printf("release(path=%s)\n", path);
+  if (blocks.size() > 0) {
+    char containerName[64], blobName[1024];
+    const char *slash = strchr(path+1, '/');
+    int slashPos = slash-path-1;
+
+    strcpy(blobName, slash);
+    strncpy(containerName, path+1, slashPos);
+    containerName[slashPos] = '\0';
+
+    azure::storage::cloud_blob_container container = _blob_client.get_container_reference(containerName);
+    if (container.exists() == false) {
+      return -ENOENT;
+    }
+
+    azure::storage::cloud_block_blob blob = container.get_block_blob_reference(blobName);
+    if (blob.exists() == false) {
+      return -ENOENT;
+    }
+    
+    blob.upload_block_list(blocks);
+    blocks.clear();
+  }
   return 0;
 }
 
