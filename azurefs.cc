@@ -26,6 +26,14 @@ utility::string_t AzureFS::get_block_id(uint16_t block_index)
     return utility::conversions::to_base64(block_index);
 }
 
+void AzureFS::parsePath(const char *path, char *containerName, char *blobName) {
+  const char *slash = strchr(path+1, '/');
+  int slashPos = slash-path-1;
+  strcpy(blobName, slash);
+  strncpy(containerName, path+1, slashPos);
+  containerName[slashPos] = '\0';
+}
+
 void AzureFS::AbsPath(char dest[PATH_MAX], const char *path) {
   strncpy(dest, path, PATH_MAX);
   //printf("translated path: %s to %s\n", path, dest);
@@ -101,12 +109,7 @@ int AzureFS::Mknod(const char *path, mode_t mode, dev_t dev) {
   printf("mknod(path=%s, mode=%d)\n", path, mode);
   // TODO: handle all cases (file, device special file or named pipe) 
   char containerName[64], blobName[1024];
-  const char *slash = strchr(path+1, '/');
-  int slashPos = slash-path-1;
-
-  strcpy(blobName, slash);
-  strncpy(containerName, path+1, slashPos);
-  containerName[slashPos] = '\0';
+  parsePath(path, containerName, blobName);
 
   azure::storage::cloud_blob_container container = _blob_client.get_container_reference(containerName);
   if (container.exists() == false) {
@@ -224,12 +227,7 @@ int AzureFS::Read(const char *path, char *buf, size_t size, off_t offset, struct
   printf("read(path=%s, size=%d, offset=%d)\n", path, (int)size, (int)offset);
 
   char containerName[64], blobName[1024];
-  const char *slash = strchr(path+1, '/');
-  int slashPos = slash-path-1;
-
-  strcpy(blobName, slash);
-  strncpy(containerName, path+1, slashPos);
-  containerName[slashPos] = '\0';
+  parsePath(path, containerName, blobName);
 
   printf("download from container=%s blob=%s\n", containerName, blobName);
 
@@ -257,13 +255,9 @@ int AzureFS::Read(const char *path, char *buf, size_t size, off_t offset, struct
 int AzureFS::Write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fileInfo) {
   printf("write(path=%s, size=%d, offset=%d)\n", path, (int)size, (int)offset);
   // TODO: handle offset
-  char containerName[64], blobName[1024];
-  const char *slash = strchr(path+1, '/');
-  int slashPos = slash-path-1;
 
-  strcpy(blobName, slash);
-  strncpy(containerName, path+1, slashPos);
-  containerName[slashPos] = '\0';
+  char containerName[64], blobName[1024];
+  parsePath(path, containerName, blobName);
 
   azure::storage::cloud_blob_container container = _blob_client.get_container_reference(containerName);
   if (container.exists() == false) {
@@ -308,13 +302,9 @@ int AzureFS::Flush(const char *path, struct fuse_file_info *fileInfo) {
 int AzureFS::Release(const char *path, struct fuse_file_info *fileInfo) {
   printf("release(path=%s)\n", path);
   if (blocks.size() > 0) {
-    char containerName[64], blobName[1024];
-    const char *slash = strchr(path+1, '/');
-    int slashPos = slash-path-1;
 
-    strcpy(blobName, slash);
-    strncpy(containerName, path+1, slashPos);
-    containerName[slashPos] = '\0';
+    char containerName[64], blobName[1024];
+    parsePath(path, containerName, blobName);
 
     azure::storage::cloud_blob_container container = _blob_client.get_container_reference(containerName);
     if (container.exists() == false) {

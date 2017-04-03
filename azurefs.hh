@@ -38,6 +38,7 @@ public:
   void setAzureOptions(const char *connectionString);
 
   utility::string_t get_block_id(uint16_t block_index);
+  void parsePath(const char *path, char *containerName, char *blobName);
   int Getattr(const char *path, struct stat *statbuf);
   int Readlink(const char *path, char *link, size_t size);
   int Mknod(const char *path, mode_t mode, dev_t dev);
