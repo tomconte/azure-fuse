@@ -1,5 +1,7 @@
 # Azure-FUSE
 
+**Important Note**: this project remained at the prototype stage. Please check out the [blobfuse](https://github.com/Azure/azure-storage-fuse) project for a FUSE driver developed by the Azure Storage engineering team.
+
 This is a very early prototype of a FUSE driver for Azure Blob Storage. It uses the following frameworks:
 
 - Microsoft Azure Storage Client Library for C++: http://azure.github.io/azure-storage-cpp/
