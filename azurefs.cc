@@ -29,7 +29,7 @@ utility::string_t AzureFS::get_block_id(uint16_t block_index)
 void AzureFS::parsePath(const char *path, char *containerName, char *blobName) {
   const char *slash = strchr(path+1, '/');
   int slashPos = slash-path-1;
-  strcpy(blobName, slash);
+  strcpy(blobName, slash+1);
   strncpy(containerName, path+1, slashPos);
   containerName[slashPos] = '\0';
 }
@@ -70,12 +70,7 @@ int AzureFS::Getattr(const char *path, struct stat *statbuf) {
     // More than one slash: this is a blob
     // TODO: handle folders and subfolders...
     char containerName[64], blobName[1024];
-    const char *slash = strchr(path+1, '/');
-    int slashPos = slash-path-1;
-
-    strcpy(blobName, slash);
-    strncpy(containerName, path+1, slashPos);
-    containerName[slashPos] = '\0';
+    parsePath(path, containerName, blobName);
 
     printf("check container=%s blob=%s\n", containerName, blobName);
 
