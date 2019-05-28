@@ -72,7 +72,7 @@ int AzureFS::Getattr(const char *path, struct stat *statbuf) {
     char containerName[64], blobName[1024];
     parsePath(path, containerName, blobName);
 
-    printf("check container=%s blob=%s\n", containerName, blobName);
+    printf("getattr container=%s blob=%s\n", containerName, blobName);
 
     azure::storage::cloud_blob_container container = _blob_client.get_container_reference(containerName);
     if (container.exists() == false) {
@@ -81,15 +81,23 @@ int AzureFS::Getattr(const char *path, struct stat *statbuf) {
 
     azure::storage::cloud_blob blob = container.get_blob_reference(blobName);
     if (blob.exists() == false) {
-      return -ENOENT;
+      // Not a blob, is this a directory?
+      azure::storage::cloud_blob_directory dir = container.get_directory_reference(blobName);
+      if (dir.is_valid() == false) {
+        return -ENOENT;
+      } else {
+        statbuf->st_mode = S_IFDIR | 0755;
+        statbuf->st_nlink = 2;
+      }
+    } else {
+      // The blob exists
+      blob.download_attributes();      
+      statbuf->st_mode = S_IFREG | 0755;
+      statbuf->st_nlink = 1;
+      statbuf->st_size = blob.properties().size();
     }
-
-    blob.download_attributes();
-    
-    statbuf->st_mode = S_IFREG | 0755;
-    statbuf->st_nlink = 1;
-    statbuf->st_size = blob.properties().size();
   }
+
   return 0;
 }
 
@@ -360,18 +368,63 @@ int AzureFS::Readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t 
     // Root directory, return list of containers
     for (azure::storage::cloud_blob_container container : _blob_client.list_containers()) {
       if (filler(buf, container.name().c_str(), NULL, 0) !=0) {
-	return -ENOMEM;
+      	return -ENOMEM;
+      }
+    }
+  } else if (strrchr(path, '/') == path) {
+    // List blobs in a container
+    azure::storage::cloud_blob_container container;
+    container = _blob_client.get_container_reference(path+1);
+    for (azure::storage::list_blob_item blob : container.list_blobs()) {
+      if (blob.is_blob()) {
+        if (filler(buf, blob.as_blob().name().c_str(), NULL, 0) != 0) {
+          return -ENOMEM;
+        }
+      } else {
+        std::string dirname = blob.as_directory().prefix();
+        dirname.pop_back();
+        if (filler(buf, dirname.c_str(), NULL, 0) != 0) {
+          return -ENOMEM;
+        }
       }
     }
   } else {
-    // List blobs in a container
-    azure::storage::cloud_blob_container container = _blob_client.get_container_reference(path+1);
-    for (azure::storage::list_blob_item blob : container.list_blobs()) {
-      if (filler(buf, blob.as_blob().name().c_str(), NULL, 0) !=0) {
-	return -ENOMEM;
+    // List blobs in a path prefix
+    char containerName[64], prefixPath[1024];
+    parsePath(path, containerName, prefixPath);
+
+    printf("readdir container=%s blob=%s\n", containerName, prefixPath);
+
+    azure::storage::cloud_blob_container container = _blob_client.get_container_reference(containerName);
+    if (container.exists() == false) {
+      return -ENOENT;
+    }
+
+    azure::storage::cloud_blob_directory dir = container.get_directory_reference(prefixPath);
+    if (dir.is_valid() == false) {
+      return -ENOENT;
+    }
+
+    for (azure::storage::list_blob_item blob : dir.list_blobs()) {
+      if (blob.is_blob()) {
+        std::string blobpath = blob.as_blob().name();
+        std::string blobname = blobpath.substr(blobpath.rfind('/') + 1);
+        std::cout << "Blob: " << blobname << '\n';
+        if (filler(buf, blobname.c_str(), NULL, 0) != 0) {
+          return -ENOMEM;
+        }
+      } else {
+        std::string dirpath = blob.as_directory().prefix();
+        dirpath.pop_back(); // Remove last '/'
+        std::string dirname = dirpath.substr(dirpath.rfind('/') + 1);
+        std::cout << "Dir: " << dirname << '\n';
+        if (filler(buf, dirname.c_str(), NULL, 0) != 0) {
+          return -ENOMEM;
+        }
       }
     }
-  }    
+  }
+
   return 0;
 }
 
