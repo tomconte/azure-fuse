@@ -1,6 +1,6 @@
-FROM ubuntu:xenial
+FROM ubuntu:bionic
 
-RUN apt-get update && apt-get install -y g++ git make libboost-all-dev libssl-dev cmake libxml++2.6-dev libxml++2.6-doc uuid-dev kmod libfuse-dev
+RUN apt-get update && apt-get install -y cmake g++ git libboost-all-dev libwebsocketpp-dev openssl libssl-dev ninja-build libxml2-dev uuid-dev kmod libfuse-dev
 
 RUN git clone https://github.com/Microsoft/cpprestsdk.git && cd cpprestsdk/Release && mkdir build.debug && cd build.debug && cmake .. -DCMAKE_BUILD_TYPE=Debug && make install
 
